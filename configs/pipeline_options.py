@@ -1,5 +1,7 @@
 from apache_beam.options.pipeline_options import PipelineOptions
 from configs.config import *
+import logging
+
 
 pipeline_options = PipelineOptions(
     runner=runner_type,

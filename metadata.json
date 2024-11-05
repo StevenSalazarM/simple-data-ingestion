@@ -1,0 +1,12 @@
+{
+    "name": "Run mode",
+    "description": "Specify if you want to run as local",
+    "parameters": [
+      {
+        "name": "mode",
+        "label": "Run mode",
+        "helpText": "local or cloud",
+        "isOptional": true
+      }
+    ]
+}

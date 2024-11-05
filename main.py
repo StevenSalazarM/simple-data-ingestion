@@ -6,12 +6,15 @@ from transforms.dofns import Ingest, Generalize
 from apache_beam.io.gcp.bigquery import WriteToBigQuery
 from apache_beam.io.textio import WriteToText
 from utils.utils import mask_fields
+import argparse
+from apache_beam.options.pipeline_options import PipelineOptions
 
-def run():
+
+def run(options=pipeline_options):
     
     # Generate the seeds for the HTTP requests (e.g. [1, 1001, 2001, etc.]). Max quantity in the batch response is 1k.
     seeds = [i*quantity+1 for i in range(expected_responses//quantity)]
-    with beam.Pipeline(options=pipeline_options) as p:
+    with beam.Pipeline(options=options) as p:
 
         # Create a PCollection of seed values for 10 batches of 1000 records each
         seed_pcol = p | 'Initiate Seeds PCollection' >> beam.Create(seeds)
@@ -40,4 +43,18 @@ def run():
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
-    run()
+    parser = argparse.ArgumentParser(description="Run mode, can be cloud or local")
+    parser.add_argument(
+        "--run_mode", type=str, default="cloud", help="Run type", choices=["cloud", "local"]
+    )
+    args = parser.parse_args()
+
+    if args.run_mode == "local":
+        pipeline_options = PipelineOptions(
+        runner="DirectRunner",
+        save_main_session=save_main_session,
+        setup_file="./setup.py",
+        temp_location=temp_bucket_folder,
+        )
+    
+    run(pipeline_options)
