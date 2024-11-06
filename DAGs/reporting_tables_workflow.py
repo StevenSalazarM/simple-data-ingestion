@@ -3,6 +3,7 @@ import datetime
 from airflow import models
 from airflow.operators import bash
 from airflow.providers.google.cloud.operators.bigquery import BigQueryCreateEmptyTableOperator, BigQueryInsertJobOperator
+from airflow.providers.google.cloud.operators.dataflow import DataflowStartFlexTemplateOperator
 from config.reporting_config import *
 
 # If you are running Airflow in more than one time zone
@@ -20,13 +21,27 @@ default_args = {
     "retry_delay": datetime.timedelta(minutes=5),
     "start_date": YESTERDAY,
 }
-
+df_sufix_name = datetime.datetime.now().strftime("%Y-%m-%d")
 with models.DAG(
     "reporting_views",
     catchup=False,
     default_args=default_args,
     schedule_interval=datetime.timedelta(days=1),
 ) as dag:
+    
+    dataflow_etl_pipeline = DataflowStartFlexTemplateOperator(
+    task_id="dataflow_etl_pipeline",
+    project_id=PROJECT_ID,
+    body={
+         "launchParameter": {
+             "jobName": f"etl-fakerapi-{df_sufix_name}",
+             "containerSpecGcsPath": "gs://dataflow-flex-template-steven/simple-etl-dataflow.json"
+        }
+    },
+    location="europe-west9",
+    append_job_name=False,
+    wait_until_finished=True,
+    )
     
     # create country stats view
     create_country_stats_view = BigQueryCreateEmptyTableOperator(
@@ -84,4 +99,4 @@ with models.DAG(
         if_exists="ignore"
     )
 
-    [create_country_stats_view, create_germany_email, create_top_3_gmail, create_age_stats_view, create_over_60_gmail]
+    dataflow_etl_pipeline >> [create_country_stats_view, create_germany_email, create_top_3_gmail, create_age_stats_view, create_over_60_gmail]
