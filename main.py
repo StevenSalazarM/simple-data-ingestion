@@ -43,6 +43,7 @@ def run(options, quantity=QUANTITY, expected_responses=EXPECTED_RESPONSE):
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
+    
     parser = argparse.ArgumentParser(description="Run mode, can be cloud or local")
     parser.add_argument(
         "--run_mode", type=str, default="cloud", help="Run type", choices=["cloud", "local"]
@@ -50,11 +51,12 @@ if __name__ == '__main__':
     parser.add_argument(
         "--setup_file", type=str, default="./setup.py", help="Setup file for Dataflow"
     )
+
     args, pipeline_args = parser.parse_known_args()
     pipeline_options = None
     if args.run_mode == "local":
-        EXPECTED_RESPONSE = 5
         QUANTITY = 1
+        EXPECTED_RESPONSE = 5
         BQ_TABLE = 'persons_local_test'
         runner = "DirectRunner"
         pipeline_options = get_pipeline_options(runner_type=runner)
@@ -62,4 +64,14 @@ if __name__ == '__main__':
         runner = "DataflowRunner"
         pipeline_options = get_pipeline_options(runner_type=runner, setup_file=args.setup_file)
 
-    run(pipeline_options, quantity=QUANTITY, expected_responses=EXPECTED_RESPONSE)
+    # corner case of EXPECTED_RESPONSE not divisible by QUANTITY is not covered yet. 
+    # Therefore, please consider quantity a divisor of expected_response (e.g. quantity 10 and expected response 50)
+    parser.add_argument(
+        "--requested_data", type=int, default=EXPECTED_RESPONSE, help="Amount of data to retreive"
+    )
+    parser.add_argument(
+        "--batch_size", type=int, default=QUANTITY, help="Amount of data to retreive"
+    ) 
+    args, pipeline_args = parser.parse_known_args()
+    logging.info(f"parsed args are {args}")
+    run(pipeline_options, quantity=args.batch_size, expected_responses=args.requested_data)

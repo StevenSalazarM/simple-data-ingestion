@@ -9,8 +9,11 @@ TABLE_OUTPUT_QUERY2 = "three_top_gmail_countries"
 TABLE_OUTPUT_AGE_STATS = "age_stats"
 TABLE_OUTPUT_QUERY3 = "over_60_email_distribution"
 
+# Dataflow configs
 FLEX_TEMPLATE_PATH = "gs://dataflow-flex-template-steven/simple-etl-dataflow.json"
 DATAFLOW_REGION = "europe-west9"
+BATCH_SIZE="1000"
+REQUESTED_DATA="10000"
 
 country_stats_view_sql = f"""
                     SELECT LOWER(location) as location, COUNT(*) as people_in_location

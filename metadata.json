@@ -7,6 +7,18 @@
         "label": "Run mode",
         "helpText": "local or cloud",
         "isOptional": true
+      },
+      {
+        "name": "batch_size",
+        "label": "Quantity",
+        "helpText": "Batch size of the HTTP requests (quantity param in the API url)",
+        "isOptional": true
+      },
+      {
+        "name": "requested_data",
+        "label": "Total amount of data",
+        "helpText": "Total amount of data (it will be divided by Quantity, e.g. requested_data 5000 and quantity 1000 means 5 HTTP requests)",
+        "isOptional": true
       }
     ]
 }

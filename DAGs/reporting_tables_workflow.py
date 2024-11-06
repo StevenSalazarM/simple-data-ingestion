@@ -37,7 +37,11 @@ with models.DAG(
     body={
          "launchParameter": {
              "jobName": f"etl-fakerapi-{df_sufix_name}",
-             "containerSpecGcsPath": FLEX_TEMPLATE_PATH
+             "containerSpecGcsPath": FLEX_TEMPLATE_PATH,
+             "parameters": {
+                 "batch_size": BATCH_SIZE,
+                 "requested_data": REQUESTED_DATA,
+             }
         }
     },
     location=DATAFLOW_REGION,
