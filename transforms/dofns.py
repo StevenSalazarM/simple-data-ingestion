@@ -20,7 +20,7 @@ class Ingest(beam.DoFn):
         request_max_retry (int): The maximum number of retries for failed API requests.
     """
 
-    def __init__(self, quantity=quantity):
+    def __init__(self, quantity=QUANTITY):
         """Initializes the DoFn with parameters from configs/config.py
 
         Args:
@@ -29,9 +29,9 @@ class Ingest(beam.DoFn):
         birthday_start (str): The birthday_start parameter for filtering data.
         request_max_retry (int): The maximum number of retries for failed API requests.
         """
-        self.api_endpoint = api_endpoint
+        self.api_endpoint = API_ENDPOINT
         self.quantity = quantity
-        self.birthday_start = birthday_start
+        self.birthday_start = BIRTHDAY_START
         
     def process(self, element):
         """Processes an element from the input PCollection and fetches data from the API.
@@ -52,7 +52,7 @@ class Ingest(beam.DoFn):
         # each HTTP request will be run in parallel and retry count should be set to 0 for each element in the input pcollection
         self.retry = 0
 
-        while self.retry <= request_max_retry:
+        while self.retry <= MAX_REQUEST_RETRY:
             # it may be possible to introduce a sleep after retry but not needed due to the small amount of requests and retries
             logging.info(f"Requesting URL as {url}")
             try:
@@ -67,9 +67,9 @@ class Ingest(beam.DoFn):
                         break
                 self.retry += 1
             except:
-                logging.warning(f"Retrying for {url} with retry count {self.retry} and max retry {request_max_retry}")
+                logging.warning(f"Retrying for {url} with retry count {self.retry} and max retry {MAX_REQUEST_RETRY}")
     
-        if self.retry == request_max_retry:
+        if self.retry == MAX_REQUEST_RETRY:
             # at this point, the retry policy was not enough and it may be worth investigating.
             # Saving the error traceback or message in a status/metadata table could be useful.
             logging.error(f"Exausted retries for {url}")
@@ -98,8 +98,8 @@ class Generalize(beam.DoFn):
         valid_fields_api (list): A list of valid field names to include in the output.
         location_field (str, optional): The field name within the 'address' dictionary for extracting location data. Defaults to "country".
         """
-        self.valid_fields_api = valid_fields_api
-        self.location_field = location_field
+        self.valid_fields_api = VALID_FIELDS_API
+        self.location_field = LOCATION_FIELD
 
     def process(self, element):
         """Processes an element and transforms the data.
@@ -117,10 +117,10 @@ class Generalize(beam.DoFn):
         new_element = {}
         new_element['uuid'] = str(uuid.uuid4())
         # we filter by location field, it is set as country but it can be easily change to city, zipcode, etc.
-        for k in valid_fields_api:
+        for k in VALID_FIELDS_API:
             match k:
                 case 'address':
-                    new_element['location'] = element.get('address', {}).get(location_field, None)
+                    new_element['location'] = element.get('address', {}).get(LOCATION_FIELD, None)
                 case 'email':
                     match = re.search(r'@([^.]+)\.', element.get('email'))
                     new_element['email_domain'] = match.group(1) if match else None

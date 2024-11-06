@@ -15,11 +15,11 @@ provider?
 
 In the [first section](https://github.com/StevenSalazarM/simple-data-ingestion?tab=readme-ov-file#1-etl-and-infrastructure), the decision of the technologies and their implementation will be presented.
 
-In the [second section](https://github.com/StevenSalazarM/simple-data-ingestion?tab=readme-ov-file#1-etl-and-infrastructure), the organization of the project in terms of files, folders and how-to-use will be presented.
+In the [second section](https://github.com/StevenSalazarM/simple-data-ingestion/tree/main#2-organization-of-the-project), the organization of the project in terms of files, folders and how-to-use will be presented.
 
-In the third section, the SQL queries that answer to the requested information will be presented (under the docs folder, there is also a BI-report pdf).
+In the [third section](https://github.com/StevenSalazarM/simple-data-ingestion/tree/main#3-sql-queries-and-assumptions), the SQL queries that answer to the requested information will be presented (under the docs folder, there is also a BI-report pdf).
 
-And in the final section, some additional considerations will be discussed (data quality, third party retry policy, scalability, testing, flex template).
+And in the [final section](https://github.com/StevenSalazarM/simple-data-ingestion/tree/main#4-additional-considerations), some additional considerations will be discussed (data quality, third party retry policy, scalability, testing, flex template).
 
 ## 1. ETL and infrastructure
 
@@ -257,6 +257,60 @@ For the query 3), again, it may be interesting to retreive first the distributio
     ORDER BY starting_age DESC
 ```
 
-In the third section, the SQL queries that answer to the requested information will be presented (under the docs folder, there is also a BI-report pdf).
+## 4. Additional considerations
 
-And in the final section, some additional considerations will be discussed (data quality, third party retry policy, scalability, testing, flex template).
+### 4.1 Data Quality
+
+The data extracted from the source is cleaned and saved into BigQuery, however, since it is an external service, there is not guarantee from their side that the data will always have the same format or that all values are valid, that values follow the same standard (lower case or upper case), etc. Therefore, in a real data pipeline, those considerations should be handled, one first step for Data Quality could be verified in the testing phase but that is not enough, therefore, it may make sense to use a real tool that provides the integrity verifications that we need (e.g. DBT). Another option is to introduce a task in the DAG that performs a data quality check on the data once it is loade into persons table or to have a specific DAG that performs data quality checks on the persons table and the data marts.
+
+At the moment, lower case was considered for the verifications of the WHERE conditions in the SQL queries and Dataflow only writes values that it finds of if it is not present it writes Null.
+
+### 4.2 Third Party Retry Policy
+
+The external service provides a maximum of 1000 records per HTTP request, thefore, to extract 10K people information, 10 requests must be sent at minimum. This project handles those 10 requests parallely thourh the creation of a pcollection with 10 elements. The requests are sent with the requests python package, and whenver the status code returned is different than 200, the worker retries to send the same request (ideally a sleep could be added between retries), the maximum number of retries is set in the config.py file and is 2 at the moment. The status code is verified on both sides (the reponse from their server to the HTTP Request) and the content of the json returned.
+
+The retry handler deals also with exceptions during the ingest phase (e.g. network failure, json decode, etc.) but one retry count is consumed.
+
+### 4.3 Scalabilitiy
+
+Thanks to the use of Dataflow, the pipeline can easily scale by modifying one parameter. From the DB side, since a serverless Datawarehouse is used, nothing changes if more data is ingested. The only possible problem could be that the source becomes a bottle neck, for that reason multiple recomendations exists:
+
+- have a specific service that handles the external requests and their priorities (perhaps another of our use cases communicate with FakerAPI)
+- Use Asynch requests and do not request for the response
+- Use a timeout and increase the retry
+- Monitor where the is the problem in terms of CPU or networking (low latency or throughput)
+- Adding a status table for the requests could also help (e.g. HTTP 429 response code)
+- Reduce the processing during ingestion and save data as it arrives
+
+### 4.4 Testing
+
+At the moment, the project includes only a draft of unit testing for the DoFns pipelines, it is a draft since ideally unit test should test the single functionalities of the code and avoid iteractions with external services. The unit test should be verified by the developer and it must be mandatory when we are dealing with production by testing it first in a System Test environment together with the integration test. Apache Beam allows to perform both unit test and integration test by using the Test runners, DirectTestRunner could be used for local test (first test in the CI/CD pipeline) and DataflowTestRunner could be used for the integration test (second test in the CI/CD pipeline) before deploying to Production.
+
+Furthermore, since the project covers also DAGs, they should be tested too. And when the time arrives, the terraform templates could be tested too in a specific GCP system test project to verify the correct creation/update of the infrastructure.
+
+To run the unit tests, move to the root directiory and run:
+
+```
+# if you want to obtain more details (% of the code tested or generate a report, I suggest coverage)
+pytest tests/unit_test/test.py
+
+```
+
+
+### 4.5 Dataflow Flex templates
+
+From Airflow, it is possible to run a Dataflow job in the traditional way by calling the main.py, however, this implies that multiple configuration parameters should be passed, the code must be loaded into a GCS space, and more complexity. For this reason, in the project, it was decided to use a flex template, a flex template is a parametric approach to launch a job that have been defined to run always the same piece of code (that is copied into a Docker Image).
+
+In this particular case, no parameter was used for the Flex template, therefore it can be run without any additional information, and it only needs the .json reference of the flex template (this json file includes the reference to the Docker image). However, ideally, a real pipeline is expected to run with different configurations (e.g. region, service account, size of the requests, max requests, max retry, etc).
+
+To create the dataflow flex template, I recommend the [official documentation](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates). Ideally, the creation of the dataflow flex template should be performed every time that the pipeline ETL changes, therefore it must be integrated in the CI/CD process to deploy a new Docker Image and json file.
+
+Here is an example of how to create a dataflow flex template quickly:
+
+```
+# generate the docker image and the json file
+gcloud dataflow flex-template build gs://${BUCKET}/simple-etl-dataflow.json --image-gcr-path "${ARTIFACT_REGISTRY_REPO}/df-flex-template:latest" --sdk-language "PYTHON" --flex-template-base-image "gcr.io/dataflow-templates-base/python311-template-launcher-base:latest" --metadata-file "metadata.json" --py-path "." --env "FLEX_TEMPLATE_PYTHON_PY_FILE=main.py" --env "FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE=requirements.txt" --env "FLEX_TEMPLATE_PYTHON_SETUP_FILE=setup.py"
+
+# run the flex template
+gcloud dataflow flex-template run "test-dataflow-flex-template" --template-file-gcs-location "gs://${BUCKET}/simple-etl-dataflow.json" --region ${GCP_REGION}
+```

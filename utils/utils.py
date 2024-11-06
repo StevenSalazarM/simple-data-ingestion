@@ -1,5 +1,5 @@
 import datetime
-from configs.config import mask_encoder, private_fiels
+from configs.config import MASK_ENCODER, PRIVATE_FIELDS
 
 def get_age_group(birth_date_str):
     """Calculates the age group from a birth date string in the format 'YYYY-MM-DD'.
@@ -20,8 +20,8 @@ def get_age_group(birth_date_str):
 def mask_fields(element):
     new_element = {}
     for k in element:
-        if k in private_fiels:
-            new_element[k] = mask_encoder
+        if k in PRIVATE_FIELDS:
+            new_element[k] = MASK_ENCODER
         else:
             new_element[k] = element[k]
     return new_element

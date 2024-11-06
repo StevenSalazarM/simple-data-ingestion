@@ -10,7 +10,7 @@ import argparse
 from apache_beam.options.pipeline_options import PipelineOptions
 
 
-def run(options, quantity=quantity, expected_responses=expected_responses):
+def run(options, quantity=QUANTITY, expected_responses=EXPECTED_RESPONSE):
     
     # Generate the seeds for the HTTP requests (e.g. [1, 1001, 2001, etc.]). Max quantity in the batch response is 1k.
     seeds = [i*quantity+1 for i in range(expected_responses//quantity)]
@@ -25,20 +25,20 @@ def run(options, quantity=quantity, expected_responses=expected_responses):
         
         # optinally save the data into a GCS bucket (in case other use cases may need it)
         (people_pcol | "Mask user-identicable fields" >> beam.Map(mask_fields)
-                    | "Write ingested data" >> WriteToText(f"{gcp_data_lake}/ingested_data/")
+                    | "Write ingested data" >> WriteToText(f"{GCP_DATA_LAKE}/ingested_data/")
         )
         # Mask, Anonymize and prepare info
         generalized_pcol =  (people_pcol | 'Mask, Anonymize and prepare' >> beam.ParDo(Generalize())
                             )
         
-        generalized_pcol | "Write Prepared elements" >> WriteToText(f"{gcp_data_lake}/masked_data/")
+        generalized_pcol | "Write Prepared elements" >> WriteToText(f"{GCP_DATA_LAKE}/masked_data/")
 
         # Write the final data to a desired sink (e.g. BigQuery)
         generalized_pcol | 'WriteToBigQuery' >> WriteToBigQuery(
-            table=gcp_project + ':' + bq_dataset + '.' + bq_table,
+            table=GCP_PROJECT_ID + ':' + BQ_DATASET + '.' + BQ_TABLE,
             create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
             write_disposition=beam.io.BigQueryDisposition.WRITE_TRUNCATE,
-            schema=bq_table_schema 
+            schema=BQ_TABLE_SCHEMA 
         )
 
 if __name__ == '__main__':
@@ -53,13 +53,13 @@ if __name__ == '__main__':
     args, pipeline_args = parser.parse_known_args()
     pipeline_options = None
     if args.run_mode == "local":
-        expected_responses = 5
-        quantity = 1
-        bq_table = 'persons_local_test'
+        EXPECTED_RESPONSE = 5
+        QUANTITY = 1
+        BQ_TABLE = 'persons_local_test'
         runner = "DirectRunner"
         pipeline_options = get_pipeline_options(runner_type=runner)
     else:
         runner = "DataflowRunner"
         pipeline_options = get_pipeline_options(runner_type=runner, setup_file=args.setup_file)
 
-    run(pipeline_options,quantity=quantity, expected_responses=expected_responses)
+    run(pipeline_options, quantity=QUANTITY, expected_responses=EXPECTED_RESPONSE)

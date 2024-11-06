@@ -22,6 +22,7 @@ default_args = {
     "start_date": YESTERDAY,
 }
 df_sufix_name = datetime.datetime.now().strftime("%Y-%m-%d")
+
 with models.DAG(
     "reporting_views",
     catchup=False,
@@ -29,16 +30,17 @@ with models.DAG(
     schedule_interval=datetime.timedelta(days=1),
 ) as dag:
     
+    # Dataflow ETL job
     dataflow_etl_pipeline = DataflowStartFlexTemplateOperator(
     task_id="dataflow_etl_pipeline",
     project_id=PROJECT_ID,
     body={
          "launchParameter": {
              "jobName": f"etl-fakerapi-{df_sufix_name}",
-             "containerSpecGcsPath": "gs://dataflow-flex-template-steven/simple-etl-dataflow.json"
+             "containerSpecGcsPath": FLEX_TEMPLATE_PATH
         }
     },
-    location="europe-west9",
+    location=DATAFLOW_REGION,
     append_job_name=False,
     wait_until_finished=True,
     )
@@ -46,7 +48,7 @@ with models.DAG(
     # create country stats view
     create_country_stats_view = BigQueryCreateEmptyTableOperator(
         task_id="create_country_stats_view",
-        dataset_id="reporting",
+        dataset_id=DATASET_OUTPUT,
         table_id=TABLE_OUTPUT_COUNTRY_STATS,
         view={
             "query": country_stats_view_sql,
@@ -55,9 +57,10 @@ with models.DAG(
         if_exists="ignore"
     )
     
+    # create german people that use gmail view
     create_germany_email = BigQueryCreateEmptyTableOperator(
         task_id="create_germany_email",
-        dataset_id="reporting",
+        dataset_id=DATASET_OUTPUT,
         table_id=TABLE_OUTPUT_QUERY1,
         view={
             "query": germany_email_distribution_sql,
@@ -66,9 +69,10 @@ with models.DAG(
         if_exists="ignore"
     )
 
+    # create top three gmail countries view
     create_top_3_gmail = BigQueryCreateEmptyTableOperator(
         task_id="create_top_3_gmail",
-        dataset_id="reporting",
+        dataset_id=DATASET_OUTPUT,
         table_id=TABLE_OUTPUT_QUERY2,
         view={
             "query": three_top_countries_gmail_sql,
@@ -77,9 +81,10 @@ with models.DAG(
         if_exists="ignore"
     )
 
+    # create age distribution view
     create_age_stats_view = BigQueryCreateEmptyTableOperator(
         task_id="create_age_stats_view",
-        dataset_id="reporting",
+        dataset_id=DATASET_OUTPUT,
         table_id=TABLE_OUTPUT_AGE_STATS,
         view={
             "query": age_distribution_sql,
@@ -88,9 +93,10 @@ with models.DAG(
         if_exists="ignore"
     )
 
+    # create people over 60 that use gmail view
     create_over_60_gmail = BigQueryCreateEmptyTableOperator(
         task_id="create_over_60_gmail",
-        dataset_id="reporting",
+        dataset_id=DATASET_OUTPUT,
         table_id=TABLE_OUTPUT_QUERY3,
         view={
             "query": over_60_email_preferences_sql,
