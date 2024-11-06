@@ -17,7 +17,7 @@ In the [first section](https://github.com/StevenSalazarM/simple-data-ingestion?t
 
 In the [second section](https://github.com/StevenSalazarM/simple-data-ingestion/tree/main#2-organization-of-the-project), the organization of the project in terms of files, folders and how-to-use will be presented.
 
-In the [third section](https://github.com/StevenSalazarM/simple-data-ingestion/tree/main#3-sql-queries-and-assumptions), the SQL queries that answer to the requested information will be presented (under the docs folder, there is also a BI-report pdf).
+In the [third section](https://github.com/StevenSalazarM/simple-data-ingestion/tree/main#3-sql-queries-and-assumptions), the SQL queries that answer to the requested information will be presented (under the docs folder, there is also a [BI-report pdf](https://github.com/StevenSalazarM/simple-data-ingestion/blob/main/docs/BI-report.pdf)).
 
 And in the [final section](https://github.com/StevenSalazarM/simple-data-ingestion/tree/main#4-additional-considerations), some additional considerations will be discussed (data quality, third party retry policy, scalability, testing, flex template).
 
@@ -135,7 +135,7 @@ some considerations:
 
 To use the code, you will need a clean python environment (e.g. a virtual environment) with at least python 3.10 (this was tested with python 3.11).
 
-Since BigQuery is used also gcloud must be installed and configured in the path.
+Since BigQuery is used also gcloud must be installed and configured in the path. **And update the config file accordingly to use your bucket, BQ table/dataset**.
 
 ```
 
@@ -157,6 +157,7 @@ python main.py --run_mode=local
 # cloud execution is the default but if needed, you can specificy it in the params. Launches a dataflow job that performs 10 requests of 1K length data size.
 python main.py --run_mode=cloud 
 ```
+
 
 in case of any trouble please feel free to open an issue.
 
