@@ -20,7 +20,7 @@ class Ingest(beam.DoFn):
         request_max_retry (int): The maximum number of retries for failed API requests.
     """
 
-    def __init__(self):
+    def __init__(self, quantity=quantity):
         """Initializes the DoFn with parameters from configs/config.py
 
         Args:

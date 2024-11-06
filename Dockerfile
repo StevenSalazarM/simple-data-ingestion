@@ -18,7 +18,7 @@ FROM gcr.io/dataflow-templates-base/python311-template-launcher-base:latest
 # See: https://beam.apache.org/documentation/sdks/python-pipeline-dependencies/#pypi-dependencies
 ENV FLEX_TEMPLATE_PYTHON_REQUIREMENTS_FILE="/template/requirements.txt"
 ENV FLEX_TEMPLATE_PYTHON_PY_FILE="/template/main.py"
-
+ENV FLEX_TEMPLATE_PYTHON_SETUP_FILE="/template/setup.py"
 COPY . /template
 
 RUN apt-get update \

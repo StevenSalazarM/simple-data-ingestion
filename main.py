@@ -1,7 +1,7 @@
 import apache_beam as beam
 import logging
 from configs.config import *
-from configs.pipeline_options import pipeline_options
+from configs.pipeline_options import get_pipeline_options
 from transforms.dofns import Ingest, Generalize
 from apache_beam.io.gcp.bigquery import WriteToBigQuery
 from apache_beam.io.textio import WriteToText
@@ -10,7 +10,7 @@ import argparse
 from apache_beam.options.pipeline_options import PipelineOptions
 
 
-def run(options=pipeline_options):
+def run(options, quantity=quantity, expected_responses=expected_responses):
     
     # Generate the seeds for the HTTP requests (e.g. [1, 1001, 2001, etc.]). Max quantity in the batch response is 1k.
     seeds = [i*quantity+1 for i in range(expected_responses//quantity)]
@@ -20,7 +20,7 @@ def run(options=pipeline_options):
         seed_pcol = p | 'Initiate Seeds PCollection' >> beam.Create(seeds)
         
         # Fetch data for each seed in parallel and yield each element (person) into a new pcollection
-        people_pcol =  (seed_pcol | 'Ingest Data and create People PCollection' >> beam.ParDo(Ingest()) 
+        people_pcol =  (seed_pcol | 'Ingest Data and create People PCollection' >> beam.ParDo(Ingest(quantity=quantity)) 
                         )
         
         # optinally save the data into a GCS bucket (in case other use cases may need it)
@@ -47,14 +47,19 @@ if __name__ == '__main__':
     parser.add_argument(
         "--run_mode", type=str, default="cloud", help="Run type", choices=["cloud", "local"]
     )
-    args = parser.parse_args()
-
+    parser.add_argument(
+        "--setup_file", type=str, default="./setup.py", help="Setup file for Dataflow"
+    )
+    args, pipeline_args = parser.parse_known_args()
+    pipeline_options = None
     if args.run_mode == "local":
-        pipeline_options = PipelineOptions(
-        runner="DirectRunner",
-        save_main_session=save_main_session,
-        setup_file="./setup.py",
-        temp_location=temp_bucket_folder,
-        )
-    
-    run(pipeline_options)
+        expected_responses = 5
+        quantity = 1
+        bq_table = 'persons_local_test'
+        runner = "DirectRunner"
+        pipeline_options = get_pipeline_options(runner_type=runner)
+    else:
+        runner = "DataflowRunner"
+        pipeline_options = get_pipeline_options(runner_type=runner, setup_file=args.setup_file)
+
+    run(pipeline_options,quantity=quantity, expected_responses=expected_responses)
